@@ -76,6 +76,32 @@ If you simply want to use it as a standalone app, feel free to download this sim
 2. **Inference**: Use the patch-based inference pipeline for dust detection
 3. **Inpainting**: Apply LaMa or fallback CV2 methods for dust removal
 
+## Batch Processing (CPU, no training)
+
+The pretrained U-Net weights are not published (see issue #5), but the macOS release
+ships the same network as a compiled CoreML model (`UNetDust.mlmodelc`). The tools in
+this fork recover those weights and run batch dust removal on a folder of scans:
+
+1. Extract `UNetDust.mlmodelc` from the release DMG (e.g. mount the DMG and copy
+   `Spotless-Film.app/Contents/Resources/UNetDust.mlmodelc`).
+2. Convert the weights to PyTorch format:
+
+   ```bash
+   pip install torch torchvision opencv-python pillow numpy scipy
+   python tools/convert_coreml_weights.py /path/to/UNetDust.mlmodelc src/weights/unetdust_coreml.pth
+   ```
+
+3. Run batch dust removal (originals are never modified; results go to a separate folder):
+
+   ```bash
+   python batch_dust_removal.py /path/to/scans /path/to/output --weights src/weights/unetdust_coreml.pth
+   ```
+
+The batch pipeline mirrors the app: 1024x1024 U-Net probability map, white-hat
+baseline subtraction on the probability map (the recovered model carries a constant
+logit offset, so a fixed threshold over-masks), connected-component cleanup, 5x5 mask
+dilation, and CV2 TELEA inpainting. It runs on CPU at roughly one minute per scan.
+
 ## Architecture
 
 ### Synthetic Data Generation
